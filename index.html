@@ -13,8 +13,8 @@ select{font:inherit;padding:4px 6px;border:1px solid var(--line2);border-radius:
 .best{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;font-size:13px}
 .best b{font-weight:600;margin-right:2px}.chip{background:#dcfce7;color:#14532d;border-radius:999px;padding:2px 10px;font-weight:500}
 .chip.p{background:#f3f4f6;color:var(--ink)}
-.edit{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
-.grid{display:grid;user-select:none;-webkit-user-select:none;touch-action:none}
+.edit{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px}.edit select{padding:3px 6px}
+.grid{display:grid;flex:1;min-height:0;user-select:none;-webkit-user-select:none;touch-action:none}
 .th{font-size:12px;color:var(--muted);padding-left:3px;white-space:nowrap;overflow:hidden;border-left:1px solid var(--line2)}
 .dl{display:flex;align-items:center;gap:6px;padding-right:10px;white-space:nowrap}.dl b{font-weight:600}.dl span{color:var(--muted);font-size:12px}
 .dl.today b,.dl.today span{color:var(--accent);font-weight:700}
@@ -60,14 +60,13 @@ function render(){
  if(me&&!ppl.includes(me))me=null;
  let html='<div class="bar"><span class="tabs"><button data-w="0" class="'+(week===0?'on':'')+'">This week</button> <button data-w="1" class="'+(week===1?'on':'')+'">Next week</button></span><span class="sp"></span>';
  if(!editing)html+='<button class="go" id="ed">Edit my times</button>';
+ else html+='<span class="edit"><span>Editing as</span><select id="me"><option value="">pick your name</option>'+ppl.map(p=>'<option'+(p===me?' selected':'')+'>'+p+'</option>').join('')+'</select><button id="rs">Reset to my calendar</button><button class="go" id="dn">Done</button></span>';
  html+='</div>';
- if(editing){html+='<div class="edit"><span>Editing as</span><select id="me"><option value="">pick your name</option>'+ppl.map(p=>'<option'+(p===me?' selected':'')+'>'+p+'</option>').join('')+'</select>'+
-  '<span>Click or drag to flip a time between <b style="color:#15803d">free</b> and <b>busy</b>. It saves for everyone.</span><span class="sp"></span><button id="rs">Reset this week to my calendar</button><button class="go" id="dn">Done</button></div>'}
+ if(editing)html+='<div class="best"><b>Click or drag</b> to flip a time between <b style="color:#15803d;margin:0 3px">free</b> and <b style="margin:0 3px">busy</b>. It saves for everyone right away.</div>';
  else{const b=bestTimes(ds);const lim=b.r.slice(0,5);
   html+='<div class="best"><b>'+(b.all?'Everyone free:':lim.length?'No time with all '+ppl.length+' free. '+(ppl.length-1)+' of '+ppl.length+' free:':'No hour this week with '+(ppl.length-1)+'+ of us free')+'</b>'+
    lim.map(([a,z])=>'<span class="chip'+(b.all?'':' p')+'">'+fmt(a,{weekday:'short'})+' '+tm(a)+'–'+tm(z)+'</span>').join('')+(b.r.length>lim.length?'<span class="muted">+'+(b.r.length-lim.length)+' more</span>':'')+'</div>'}
- const avail=app.clientHeight-(editing?130:118);const rowH=Math.max(22,Math.min(44,Math.floor(avail/ds.length)));
- html+='<div class="grid" id="g" style="grid-template-columns:96px repeat('+rows+',1fr);grid-template-rows:20px repeat('+ds.length+','+rowH+'px)"><div></div>';
+  html+='<div class="grid" id="g" style="grid-template-columns:96px repeat('+rows+',1fr);grid-template-rows:20px repeat('+ds.length+',minmax(18px,1fr))"><div></div>';
  for(let i=0;i<rows;i+=2)html+='<div class="th" style="grid-column:span 2">'+tm(ds[0]+(H0*60+i*30)*60e3)+'</div>';
  ds.forEach(d=>{html+='<div class="dl'+(ymd(d)===todayK?' today':'')+'"><b>'+(ymd(d)===todayK?'Today':fmt(d,{weekday:'short'}))+'</b><span>'+fmt(d,{month:'short',day:'numeric'})+'</span></div>';
   slotsOf(d).forEach((s,i)=>{let bg,hand;
