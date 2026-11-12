@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team availability</title>
+<style>
+:root{--line:#e5e7eb;--line2:#d1d5db;--muted:#6b7280;--ink:#111827;--accent:#047857}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#fff;color:var(--ink);font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%;padding:8px 10px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px}
+.tabs button,.modes button{border:1px solid var(--line2);background:#fff;padding:3px 9px;border-radius:6px;font:inherit;cursor:pointer;color:var(--ink)}
+.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.modes button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+select{font:inherit;padding:2px 4px;border:1px solid var(--line2);border-radius:6px}
+.sp{flex:1}.muted{color:var(--muted)}
+.gridwrap{flex:1;min-height:0;display:flex;flex-direction:column}
+.grid{display:grid;flex:1;min-height:0;user-select:none;-webkit-user-select:none}
+.hd{text-align:center;padding-bottom:3px}.hd b{font-weight:600}.hd span{color:var(--muted);font-size:11px;margin-left:4px}.hd.today b{color:var(--accent)}
+.lb{font-size:10px;color:var(--muted);text-align:right;padding-right:5px;line-height:1;transform:translateY(-5px)}
+.c{border-right:1px solid var(--line);position:relative;cursor:cell}.c.h{border-top:1px solid var(--line2)}.c.f{border-left:1px solid var(--line)}.c.last{border-bottom:1px solid var(--line2)}
+.c.past{opacity:.35}
+.c.me::after{content:"";position:absolute;inset:2px;border:1.5px dashed rgba(17,24,39,.55);border-radius:2px;pointer-events:none}
+.c:hover{outline:2px solid var(--ink);outline-offset:-2px;z-index:2}
+.foot{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;margin-top:6px;color:var(--muted);font-size:12px}
+.sw{display:inline-flex;gap:4px;align-items:center}.sw i{width:11px;height:11px;border:1px solid var(--line2);display:inline-block}
+#tip{position:fixed;pointer-events:none;background:#111827;color:#fff;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;max-width:240px;display:none;z-index:9;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+#tip .t{font-weight:600;margin-bottom:2px}#tip .no{color:#9ca3af}
+.msg{padding:16px;color:var(--muted)}
+</style></head><body><div id="app"><div class="msg">Loading…</div></div><div id="tip"></div>
+<script>
+const STORE='https://script.google.com/macros/s/AKfycbxdixStSu3zncVM3f5IGjCnBj8k5IETum99bqpKmxL0cz4gqiaVctHNbqVLo081nu6c4A/exec';
+const K=new URLSearchParams(location.search).get('k')||'';
+const TZ='America/Los_Angeles',SLOT=30*60e3,H0=9,H1=23;
+let S=null,week=0,mode='f',me=null,drag=null,pending=0;
+try{me=localStorage.getItem('ta_me')}catch(e){}
+const app=document.getElementById('app'),tip=document.getElementById('tip');
+const fmt=(ms,o)=>new Intl.DateTimeFormat('en-US',Object.assign({timeZone:TZ},o)).format(new Date(ms));
+const tm=ms=>fmt(ms,{hour:'numeric',minute:'2-digit'}).replace(' ','').toLowerCase();
+const shade=(n,t)=>{if(!n)return'#fff';const r=Math.min(n/t,1),a=[207,238,221],b=[0,153,76];return'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*r)).join(',')+')'};
+// local midnight in LA for a given date string
+function laMidnight(ymd){const g=new Date(ymd+'T12:00:00Z');const off=new Intl.DateTimeFormat('en-US',{timeZone:TZ,timeZoneName:'longOffset'}).format(g).match(/GMT([+-]\d\d):?(\d\d)?/);const sign=off[1][0]==='-'?-1:1;const mins=sign*(Math.abs(+off[1])*60+(+(off[2]||0)));return Date.parse(ymd+'T00:00:00Z')-mins*60e3}
+function ymd(ms){return new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date(ms))}
+function days(){const out=[];const t0=laMidnight(ymd(Date.now()));const dow=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(fmt(t0,{weekday:'short'}));
+ // weeks run Mon..Sun; week 0 = today..Sunday, week 1 = next Mon..Sun
+ const toSun=(7-dow)%7;let start,n;if(week===0){start=t0;n=toSun+1}else{start=laMidnight(ymd(t0+(toSun+1)*86400e3+3600e3));n=7}
+ for(let i=0;i<n;i++)out.push(laMidnight(ymd(start+i*86400e3+3600e3)));return out}
+function isFree(p,s){const m=(S.marks[p]||{})[s];if(m==='f')return true;if(m==='b')return false;const b=(S.busy&&S.busy.busy[p])||[];for(const [a,z] of b)if(a<s+SLOT&&z>s)return false;return true}
+function render(){
+ if(!S){return}
+ const ppl=S.people,ds=days(),rows=(H1-H0)*2,now=Date.now();
+ const h=app.clientHeight;const rowH=Math.max(8,Math.floor((h-118)/rows));
+ let html='<div class="bar"><span class="tabs"><button data-w="0" class="'+(week===0?'on':'')+'">This week</button> <button data-w="1" class="'+(week===1?'on':'')+'">Next week</button></span><span class="sp"></span>'+
+  '<span class="muted">I\'m</span><select id="me"><option value="">pick your name</option>'+ppl.map(p=>'<option'+(p===me?' selected':'')+'>'+p+'</option>').join('')+'</select>'+
+  '<span class="modes">'+[['f','Mark free'],['b','Mark busy'],['','Use my calendar']].map(([v,l])=>'<button data-m="'+v+'" class="'+(mode===v?'on':'')+'">'+l+'</button>').join(' ')+'</span></div>';
+ html+='<div class="gridwrap"><div class="grid" id="g" style="grid-template-columns:44px repeat('+ds.length+',1fr);grid-template-rows:auto repeat('+rows+','+rowH+'px)"><div></div>';
+ const todayK=ymd(now);
+ ds.forEach(d=>{html+='<div class="hd'+(ymd(d)===todayK?' today':'')+'"><b>'+fmt(d,{weekday:'short'})+'</b><span>'+fmt(d,{month:'short',day:'numeric'})+'</span></div>'});
+ for(let i=0;i<rows;i++){const t=ds[0]+(H0*60+i*30)*60e3;html+='<div class="lb">'+(i%2==0?tm(t).replace(':00',''):'')+'</div>';
+  ds.forEach((d,j)=>{const s=d+(H0*60+i*30)*60e3;const free=ppl.filter(p=>isFree(p,s));const mk=me&&(S.marks[me]||{})[s];
+   html+='<div class="c'+(i%2==0?' h':'')+(j==0?' f':'')+(i==rows-1?' last':'')+(s+SLOT<now?' past':'')+(mk?' me':'')+'" data-s="'+s+'" style="background:'+shade(free.length,ppl.length)+'"></div>'})}
+ html+='</div></div><div class="foot"><span>Free:</span>'+ppl.map((_,k)=>'<span class="sw"><i style="background:'+shade(k,ppl.length)+'"></i>'+k+'</span>').join('')+'<span class="sw"><i style="background:'+shade(ppl.length,ppl.length)+'"></i>'+ppl.length+'</span>'+
+  '<span>· From everyone\'s Google Calendars'+(S.busy?', updated '+tm(S.busy.updated):'')+'. Pick your name, then click or drag to fix your times. Dashed = changed by hand.</span></div>';
+ app.innerHTML=html;
+ app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{week=+b.dataset.w;render()});
+ app.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;render()});
+ document.getElementById('me').onchange=e=>{me=e.target.value||null;try{localStorage.setItem('ta_me',me||'')}catch(x){};render()};
+ const g=document.getElementById('g');
+ g.onmousemove=e=>{const c=e.target.closest('.c');if(!c){tip.style.display='none';return}const s=+c.dataset.s;
+  if(drag&&!drag.set.has(s)){drag.set.add(s);applyLocal(s);c.style.background=shade(ppl.filter(p=>isFree(p,s)).length,ppl.length)}
+  const free=ppl.filter(p=>isFree(p,s)),no=ppl.filter(p=>!free.includes(p));
+  const hand=ppl.filter(p=>(S.marks[p]||{})[s]);
+  tip.innerHTML='<div class="t">'+fmt(s,{weekday:'short',month:'short',day:'numeric'})+', '+tm(s)+'–'+tm(s+SLOT)+'</div>'+(free.length?'Free: '+free.join(', '):'<span class="no">Nobody is free</span>')+(no.length?'<div class="no">Busy: '+no.join(', ')+'</div>':'')+(hand.length?'<div class="no">Set by hand: '+hand.join(', ')+'</div>':'');
+  tip.style.display='block';tip.style.left=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-6)+'px';tip.style.top=Math.min(e.clientY+14,innerHeight-tip.offsetHeight-6)+'px'};
+ g.onmouseleave=()=>{tip.style.display='none'};
+ g.onmousedown=e=>{const c=e.target.closest('.c');if(!c)return;if(!me){alertName();return}drag={set:new Set([+c.dataset.s])};applyLocal(+c.dataset.s);render();e.preventDefault()};
+}
+function alertName(){const sel=document.getElementById('me');sel.style.outline='2px solid #dc2626';setTimeout(()=>sel.style.outline='',1200)}
+function applyLocal(s){S.marks[me]=S.marks[me]||{};if(mode)S.marks[me][s]=mode;else delete S.marks[me][s]}
+document.addEventListener('mouseup',()=>{if(!drag)return;const slots=[...drag.set];drag=null;render();pending++;
+ fetch(STORE,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({k:K,action:'mark',person:me,slots:slots,value:mode||null})}).then(r=>r.json()).then(d=>{pending--;if(d.marks&&!pending){S.marks=d.marks;render()}}).catch(()=>{pending--})});
+function load(){if(drag||pending)return;fetch(STORE+'?k='+encodeURIComponent(K)).then(r=>r.json()).then(d=>{if(d.error){app.innerHTML='<div class="msg">This view needs its access key in the link.</div>';return}S=d;render()}).catch(()=>{if(!S)app.innerHTML='<div class="msg">Couldn\'t load availability. Try refreshing.</div>'})}
+addEventListener('resize',()=>render());load();setInterval(load,60000);
+</script></body></html>
