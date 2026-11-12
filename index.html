@@ -62,7 +62,7 @@ function render(){
  if(!editing)html+='<button class="go" id="ed">Edit my times</button>';
  else html+='<span class="edit"><span>Editing as</span><select id="me"><option value="">pick your name</option>'+ppl.map(p=>'<option'+(p===me?' selected':'')+'>'+p+'</option>').join('')+'</select><button id="rs">Reset to my calendar</button><button class="go" id="dn">Done</button></span>';
  html+='</div>';
- if(editing)html+='<div class="best"><b>Click or drag</b> to flip a time between <b style="color:#15803d;margin:0 3px">free</b> and <b style="margin:0 3px">busy</b>. It saves for everyone right away.</div>';
+ if(editing)html+='<div class="best"><span><b>Click or drag</b> to flip a time between <b style="color:#15803d">free</b> and <b>busy</b>. It saves for everyone right away.</span></div>';
  else{const b=bestTimes(ds);const lim=b.r.slice(0,5);
   html+='<div class="best"><b>'+(b.all?'Everyone free:':lim.length?'No time with all '+ppl.length+' free. '+(ppl.length-1)+' of '+ppl.length+' free:':'No hour this week with '+(ppl.length-1)+'+ of us free')+'</b>'+
    lim.map(([a,z])=>'<span class="chip'+(b.all?'':' p')+'">'+fmt(a,{weekday:'short'})+' '+tm(a)+'–'+tm(z)+'</span>').join('')+(b.r.length>lim.length?'<span class="muted">+'+(b.r.length-lim.length)+' more</span>':'')+'</div>'}
