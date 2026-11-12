@@ -13,8 +13,9 @@ select{font:inherit;padding:2px 4px;border:1px solid var(--line2);border-radius:
 .gridwrap{flex:1;min-height:0;display:flex;flex-direction:column}
 .grid{display:grid;flex:1;min-height:0;user-select:none;-webkit-user-select:none}
 .hd{text-align:center;padding-bottom:6px;line-height:1.25}.hd b{display:block;font-weight:600;font-size:15px}.hd span{color:var(--muted);font-size:12px}.hd.today b{color:var(--accent)}
-.lb{font-size:12px;color:var(--muted);text-align:right;padding-right:8px;line-height:1;transform:translateY(-6px);white-space:nowrap}
-.c{border-right:1px solid #fff;border-left:1px solid #fff;position:relative;cursor:cell}.c.h{border-top:1px solid #9ca3af}.c:not(.h){border-top:1px dotted #e5e7eb}.c.f{border-left:1px solid var(--line)}.c.last{border-bottom:1px solid var(--line2)}
+.th{font-size:12px;color:var(--muted);text-align:left;padding-left:2px;white-space:nowrap;overflow:hidden}
+.dl{display:flex;align-items:center;gap:5px;padding-right:10px;white-space:nowrap}.dl b{font-weight:600}.dl span{color:var(--muted);font-size:12px}.dl.today b{color:var(--accent)}
+.c{border-top:1px solid #fff;border-bottom:1px solid #fff;position:relative;cursor:cell;border-left:1px dotted #e5e7eb}.c.h{border-left:1px solid #9ca3af}.c.f{border-left:1px solid var(--line)}.c.last{border-bottom:1px solid var(--line2)}
 .c.past{opacity:.35}
 .c.me::after{content:"";position:absolute;inset:2px;border:1.5px dashed rgba(17,24,39,.55);border-radius:2px;pointer-events:none}
 .c:hover{outline:2px solid var(--ink);outline-offset:-2px;z-index:2}
@@ -45,16 +46,16 @@ function isFree(p,s){const m=(S.marks[p]||{})[s];if(m==='f')return true;if(m==='
 function render(){
  if(!S){return}
  const ppl=S.people,ds=days(),rows=(H1-H0)*2,now=Date.now();
- const h=app.clientHeight;const rowH=Math.max(9,Math.floor((h-150)/rows));
+ const h=app.clientHeight;const rowH=Math.max(20,Math.min(46,Math.floor((h-128)/ds.length)));
  let html='<div class="bar"><span class="tabs"><button data-w="0" class="'+(week===0?'on':'')+'">This week</button> <button data-w="1" class="'+(week===1?'on':'')+'">Next week</button></span><span class="sp"></span>'+
   '<span class="muted">I\'m</span><select id="me"><option value="">pick your name</option>'+ppl.map(p=>'<option'+(p===me?' selected':'')+'>'+p+'</option>').join('')+'</select>'+
   '<span class="modes">'+[['f','Mark free'],['b','Mark busy'],['','Use my calendar']].map(([v,l])=>'<button data-m="'+v+'" class="'+(mode===v?'on':'')+'">'+l+'</button>').join(' ')+'</span></div>';
- html+='<div class="gridwrap"><div class="grid" id="g" style="grid-template-columns:58px repeat('+ds.length+',1fr);grid-template-rows:auto repeat('+rows+','+rowH+'px)"><div></div>';
+ html+='<div class="gridwrap"><div class="grid" id="g" style="grid-template-columns:92px repeat('+rows+',1fr);grid-template-rows:22px repeat('+ds.length+','+rowH+'px)"><div></div>';
  const todayK=ymd(now);
- ds.forEach(d=>{html+='<div class="hd'+(ymd(d)===todayK?' today':'')+'"><b>'+fmt(d,{weekday:'short'})+'</b><span>'+fmt(d,{month:'short',day:'numeric'})+'</span></div>'});
- for(let i=0;i<rows;i++){const t=ds[0]+(H0*60+i*30)*60e3;html+='<div class="lb">'+(i%2==0?tm(t).replace(':00',''):'')+'</div>';
-  ds.forEach((d,j)=>{const s=d+(H0*60+i*30)*60e3;const free=ppl.filter(p=>isFree(p,s));const mk=me&&(S.marks[me]||{})[s];
-   html+='<div class="c'+(i%2==0?' h':'')+(j==0?' f':'')+(i==rows-1?' last':'')+(s+SLOT<now?' past':'')+(mk?' me':'')+'" data-s="'+s+'" style="background:'+shade(free.length,ppl.length)+'"></div>'})}
+ for(let i=0;i<rows;i+=2){const t=ds[0]+(H0*60+i*30)*60e3;html+='<div class="th" style="grid-column:span 2">'+tm(t).replace(':00','')+'</div>'}
+ ds.forEach((d,j)=>{html+='<div class="dl'+(ymd(d)===todayK?' today':'')+'"><b>'+fmt(d,{weekday:'short'})+'</b> <span>'+fmt(d,{month:'short',day:'numeric'})+'</span></div>';
+  for(let i=0;i<rows;i++){const s=d+(H0*60+i*30)*60e3;const free=ppl.filter(p=>isFree(p,s));const mk=me&&(S.marks[me]||{})[s];
+   html+='<div class="c'+(i%2==0?' h':'')+(j==ds.length-1?' last':'')+(s+SLOT<now?' past':'')+(mk?' me':'')+'" data-s="'+s+'" style="background:'+shade(free.length,ppl.length)+'"></div>'}});
  html+='</div></div><div class="foot"><span>Free:</span>'+ppl.map((_,k)=>'<span class="sw"><i style="background:'+shade(k,ppl.length)+'"></i>'+k+'</span>').join('')+'<span class="sw"><i style="background:'+shade(ppl.length,ppl.length)+'"></i>'+ppl.length+'</span>'+
   '<span>· Live from everyone\'s calendars'+(S.busy?' (updated '+tm(S.busy.updated)+')':'')+'. Dashed = set by hand.</span></div>';
  app.innerHTML=html;
