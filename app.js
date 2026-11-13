@@ -1,4 +1,5 @@
-const STORE='https://script.google.com/macros/s/AKfycbxdixStSu3zncVM3f5IGjCnBj8k5IETum99bqpKmxL0cz4gqiaVctHNbqVLo081nu6c4A/exec';
+// Reads and edits go through a Cloudflare relay (relay/worker.js) because the Apps Script store often doesn't answer.
+const STORE='https://team-availability-relay.devintorres28.workers.dev/';
 const K=new URLSearchParams(location.search).get('k')||'';
 const TZ='America/Los_Angeles',SLOT=30*60e3,H0=9,H1=23;
 // Five clearly different steps: nobody (gray) -> everyone (dark green)
