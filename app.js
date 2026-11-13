@@ -82,6 +82,6 @@ document.addEventListener('pointerup',()=>{if(!drag)return;const d=drag;drag=nul
  const keep=sl.filter(s=>(S.marks[me]||{})[s]),clear=sl.filter(s=>!(S.marks[me]||{})[s]);render();
  if(keep.length)save(keep,d.v);if(clear.length)save(clear,null)});
 const CK='avail:'+K;
-function load(){if(drag||pending)return;retry(()=>req(STORE+'?k='+encodeURIComponent(K)),4).then(d=>{if(d.error){app.innerHTML='<div class="msg">This view needs its access key in the link.</div>';return}S=d;S.marks=S.marks||{};try{localStorage.setItem(CK,JSON.stringify(d))}catch(e){}if(!drag&&!pending)render()}).catch(()=>{if(!S)app.innerHTML='<div class="msg">Couldn\'t load availability. Try refreshing.</div>'})}
+function load(){if(drag||pending)return;retry(()=>req(STORE+'?k='+encodeURIComponent(K)),4).then(d=>{if(d.error){app.innerHTML='<div class="msg">This view needs its access key in the link.</div>';return}S=d;S.marks=S.marks||{};try{localStorage.setItem(CK,JSON.stringify(d))}catch(e){}if(!drag&&!pending)render()}).catch(e=>{if(!S)app.innerHTML='<div class="msg">Couldn\'t load availability. Try refreshing. <span style="opacity:.5">('+esc((e&&e.name)||'')+': '+esc((e&&e.message)||'')+')</span></div>'})}
 try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.busy){S=c;S.marks=S.marks||{};render()}}catch(e){}
 addEventListener('resize',()=>{if(!drag)render()});load();setInterval(load,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
