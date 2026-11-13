@@ -74,9 +74,14 @@ function showTip(e,s){const ppl=group();const free=ppl.filter(p=>isFree(p,s)),no
  tip.innerHTML=h;tip.style.display='block';tip.style.left=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-6)+'px';tip.style.top=Math.min(e.clientY+14,innerHeight-tip.offsetHeight-6)+'px'}
 // A mark equal to what the calendar already says is dropped, so the calendar stays in charge
 function setMine(s,v){S.marks[me]=S.marks[me]||{};if((v==='f')===calFree(me,s))delete S.marks[me][s];else S.marks[me][s]=v}
-function save(slots,v){pending++;fetch(STORE,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({k:K,action:'mark',person:me,slots,value:v})}).then(r=>r.json()).then(d=>{pending--;if(d.marks&&!pending&&!drag){S.marks=d.marks;render()}}).catch(()=>{pending--})}
+// The store sometimes never answers, so every request gives up after a few seconds and tries again.
+function req(url,opt,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||6000);return fetch(url,Object.assign({signal:c.signal},opt)).then(r=>r.json()).finally(()=>clearTimeout(t))}
+function retry(f,n){return f().catch(e=>n>1?retry(f,n-1):Promise.reject(e))}
+function save(slots,v){pending++;retry(()=>req(STORE,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({k:K,action:'mark',person:me,slots,value:v})},8000),3).then(d=>{pending--;if(d.marks&&!pending&&!drag){S.marks=d.marks;render()}}).catch(()=>{pending--})}
 document.addEventListener('pointerup',()=>{if(!drag)return;const d=drag;drag=null;const sl=[...d.set];
  const keep=sl.filter(s=>(S.marks[me]||{})[s]),clear=sl.filter(s=>!(S.marks[me]||{})[s]);render();
  if(keep.length)save(keep,d.v);if(clear.length)save(clear,null)});
-function load(){if(drag||pending)return;fetch(STORE+'?k='+encodeURIComponent(K)).then(r=>r.json()).then(d=>{if(d.error){app.innerHTML='<div class="msg">This view needs its access key in the link.</div>';return}S=d;S.marks=S.marks||{};render()}).catch(()=>{if(!S)app.innerHTML='<div class="msg">Couldn\'t load availability. Try refreshing.</div>'})}
-addEventListener('resize',()=>{if(!drag)render()});load();setInterval(load,60000);
+const CK='avail:'+K;
+function load(){if(drag||pending)return;retry(()=>req(STORE+'?k='+encodeURIComponent(K)),4).then(d=>{if(d.error){app.innerHTML='<div class="msg">This view needs its access key in the link.</div>';return}S=d;S.marks=S.marks||{};try{localStorage.setItem(CK,JSON.stringify(d))}catch(e){}if(!drag&&!pending)render()}).catch(()=>{if(!S)app.innerHTML='<div class="msg">Couldn\'t load availability. Try refreshing.</div>'})}
+try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.busy){S=c;S.marks=S.marks||{};render()}}catch(e){}
+addEventListener('resize',()=>{if(!drag)render()});load();setInterval(load,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
