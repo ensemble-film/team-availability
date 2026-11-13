@@ -5,5 +5,7 @@
 <script>
 // This shell stays the same. It loads the newest app.css/app.js on every open, so changes show up right away.
 (function(){var v=Date.now();var l=document.createElement('link');l.rel='stylesheet';l.href='app.css?v='+v;document.head.appendChild(l);
-var s=document.createElement('script');s.src='app.js?v='+v;document.body.appendChild(s)})();
+var M=function(t){var a=document.getElementById('app');if(a&&/msg/.test(a.innerHTML))a.innerHTML='<div class="msg">'+t+'</div>'};
+window.addEventListener('error',function(e){M('Error: '+(e.message||'resource failed')+' ('+(e.lineno||'')+')')},true);
+var s=document.createElement('script');s.src='app.js?v='+v;s.onerror=function(){M('Couldn\'t load the app code. Try refreshing.')};s.onload=function(){M('Loading the latest availability…')};document.body.appendChild(s)})();
 </script></body></html>
